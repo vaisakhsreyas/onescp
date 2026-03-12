@@ -1,19 +1,54 @@
 #!/bin/bash
 
-# Check number of arguments
-if [ "$#" -ne 3 ]; then
-    echo "Usage: ./onescp <local_file> <target_server> <target_path>"
+show_help() {
+    echo "onescp - Simple SCP wrapper"
+    echo ""
+    echo "Usage:"
+    echo "  onescp upload <local_path> <server> <remote_path>"
+    echo "  onescp download <server> <remote_path> <local_path>"
+    echo ""
+    echo "Examples:"
+    echo "  onescp upload file.txt 192.168.1.20 /tmp/"
+    echo "  onescp upload mydir 192.168.1.20 /tmp/"
+    echo "  onescp download 192.168.1.20 /tmp/file.txt ./"
+    echo "  onescp download 192.168.1.20 /tmp/mydir ./"
+}
+
+if [ $# -eq 0 ]; then
+    show_help
     exit 1
 fi
 
-LOCAL_FILE=$1
-TARGET_SERVER=$2
-TARGET_PATH=$3
+ACTION=$1
 
-scp -r "$LOCAL_FILE" "$TARGET_SERVER":"$TARGET_PATH"
+run_scp() {
+    scp -r "$@"
+    if [ $? -eq 0 ]; then
+        echo "✅ Success!"
+    else
+        echo "❌ Failed!"
+    fi
+}
 
-if [ $? -eq 0 ]; then
-    echo "File copied successfully."
-else
-    echo "File copy failed."
-fi
+case $ACTION in
+
+upload)
+    if [ $# -ne 4 ]; then
+        show_help
+        exit 1
+    fi
+    run_scp "$2" "$3:$4"
+    ;;
+
+download)
+    if [ $# -ne 4 ]; then
+        show_help
+        exit 1
+    fi
+    run_scp "$2:$3" "$4"
+    ;;
+
+*)
+    show_help
+    ;;
+esac
