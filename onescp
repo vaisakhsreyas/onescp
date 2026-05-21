@@ -4,14 +4,13 @@ show_help() {
     echo "onescp - Simple SCP wrapper"
     echo ""
     echo "Usage:"
-    echo "  onescp upload <local_path> <server> <remote_path>"
-    echo "  onescp download <server> <remote_path> <local_path>"
+    echo "  onescp upload <local_path> <server|inventory_file> <remote_path>"
+    echo "  onescp download <server|inventory_file> <remote_path> <local_path>"
     echo ""
     echo "Examples:"
     echo "  onescp upload file.txt 192.168.1.20 /tmp/"
-    echo "  onescp upload mydir 192.168.1.20 /tmp/"
-    echo "  onescp download 192.168.1.20 /tmp/file.txt ./"
-    echo "  onescp download 192.168.1.20 /tmp/mydir ./"
+    echo "  onescp upload mydir servers.inv /tmp/"
+    echo "  onescp download servers.inv /tmp/file.txt ./"
 }
 
 if [ $# -eq 0 ]; then
@@ -30,6 +29,30 @@ run_scp() {
     fi
 }
 
+process_target() {
+    local source=$1
+    local target=$2
+    local remote_path=$3
+    local local_path=$4
+
+    if [[ $target == *.inv ]]; then
+        while IFS= read -r server; do
+            [ -z "$server" ] && continue
+            if [ "$ACTION" = "upload" ]; then
+                run_scp "$source" "$server:$remote_path"
+            else
+                run_scp "$server:$remote_path" "$local_path"
+            fi
+        done < "$target"
+    else
+        if [ "$ACTION" = "upload" ]; then
+            run_scp "$source" "$target:$remote_path"
+        else
+            run_scp "$target:$remote_path" "$local_path"
+        fi
+    fi
+}
+
 case $ACTION in
 
 upload)
@@ -37,7 +60,7 @@ upload)
         show_help
         exit 1
     fi
-    run_scp "$2" "$3:$4"
+    process_target "$2" "$3" "$4" ""
     ;;
 
 download)
@@ -45,10 +68,11 @@ download)
         show_help
         exit 1
     fi
-    run_scp "$2:$3" "$4"
+    process_target "" "$2" "$3" "$4"
     ;;
 
 *)
     show_help
     ;;
 esac
+
